@@ -36,17 +36,19 @@ export async function main(ns) {
     ns.print(`Successfully copied ${scriptName} to ${target}`);
 
     // Calculate the maximum number of threads that can be run
-    const scriptRam = ns.getScriptRam(scriptName, target);
-    const availableRam = ns.getServerMaxRam(target) - ns.getServerUsedRam(target);
-    let threads = Math.floor(availableRam / scriptRam);
-
-    // Ensure threads is at least 1
-    if (threads < 1) {
-      threads = 1;
-    }
+    // Moved calculation right before execution
+    
 
     // Execute the script on the target server
     if (!ns.isRunning(scriptName, target, target)) {
+      const scriptRam = ns.getScriptRam(scriptName, target);
+      const availableRam = ns.getServerMaxRam(target) - ns.getServerUsedRam(target);
+      let threads = Math.floor(availableRam / scriptRam);
+
+      // Ensure threads is at least 1
+      if (threads < 1) {
+        threads = 1;
+      }
       const pid = ns.exec(scriptName, target, threads, target); // Execute with target as argument
       if (pid === 0) {
         ns.tprint(`Failed to execute ${scriptName} on ${target}`);
@@ -75,6 +77,7 @@ export async function main(ns) {
 
       if (await infect(target)) {
         // If infection was successful, recursively spread from the new host
+        // Moved calculation right before execution
         const scriptRam = ns.getScriptRam(scriptName, target);
         const availableRam = ns.getServerMaxRam(target) - ns.getServerUsedRam(target);
         let threads = Math.floor(availableRam / scriptRam);
