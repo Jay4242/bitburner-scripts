@@ -120,11 +120,11 @@ export async function main(ns) {
       }
 
       // Perform weaken, grow, hack loop
-      while (ns.getServerSecurityLevel(target) > ns.getServerMinSecurityLevel(target)) {
+      if (ns.getServerSecurityLevel(target) > ns.getServerMinSecurityLevel(target)) {
         await ns.weaken(target);
       }
 
-      while (ns.getServerMoneyAvailable(target) < ns.getServerMaxMoney(target)) {
+      if (ns.getServerMoneyAvailable(target) < ns.getServerMaxMoney(target)) {
         await ns.grow(target);
       }
 
@@ -134,11 +134,11 @@ export async function main(ns) {
     // If there are no valid targets, target the current host
     if (targets.every(target => ns.getServerMaxMoney(target) === 0 || !ns.hasRootAccess(target))) {
       const currentHostTarget = ns.getHostname();
-      while (ns.getServerSecurityLevel(currentHostTarget) > ns.getServerMinSecurityLevel(currentHostTarget)) {
+      if (ns.getServerSecurityLevel(currentHostTarget) > ns.getServerMinSecurityLevel(currentHostTarget)) {
         await ns.weaken(currentHostTarget);
       }
 
-      while (ns.getServerMoneyAvailable(currentHostTarget) < ns.getServerMaxMoney(currentHostTarget)) {
+      if (ns.getServerMoneyAvailable(currentHostTarget) < ns.getServerMaxMoney(currentHostTarget)) {
         await ns.grow(currentHostTarget);
       }
 
