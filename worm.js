@@ -35,14 +35,24 @@ export async function main(ns) {
     await ns.scp(scriptName, target, currentHost);
     ns.print(`Successfully copied ${scriptName} to ${target}`);
 
+    // Calculate the maximum number of threads that can be run
+    const scriptRam = ns.getScriptRam(scriptName, target);
+    const availableRam = ns.getServerMaxRam(target) - ns.getServerUsedRam(target);
+    let threads = Math.floor(availableRam / scriptRam);
+
+    // Ensure threads is at least 1
+    if (threads < 1) {
+      threads = 1;
+    }
+
     // Execute the script on the target server
     if (!ns.isRunning(scriptName, target, target)) {
-      const pid = ns.exec(scriptName, target, 1, target); // Execute with target as argument
+      const pid = ns.exec(scriptName, target, threads, target); // Execute with target as argument
       if (pid === 0) {
         ns.tprint(`Failed to execute ${scriptName} on ${target}`);
         return false; // Indicate failure
       }
-      ns.print(`Successfully executed ${scriptName} on ${target} with PID ${pid}`);
+      ns.print(`Successfully executed ${scriptName} on ${target} with ${threads} threads and PID ${pid}`);
     } else {
       ns.print(`${scriptName} is already running on ${target}`);
     }
@@ -65,7 +75,14 @@ export async function main(ns) {
 
       if (await infect(target)) {
         // If infection was successful, recursively spread from the new host
-        const pid = ns.exec(scriptName, target, 1, target); // Start worm on new host
+        const scriptRam = ns.getScriptRam(scriptName, target);
+        const availableRam = ns.getServerMaxRam(target) - ns.getServerUsedRam(target);
+        let threads = Math.floor(availableRam / scriptRam);
+         // Ensure threads is at least 1
+        if (threads < 1) {
+          threads = 1;
+        }
+        const pid = ns.exec(scriptName, target, threads, target); // Start worm on new host
         if (pid === 0) {
           ns.tprint(`Failed to execute ${scriptName} on ${target}`);
         }
