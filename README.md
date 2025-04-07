@@ -2,6 +2,10 @@
 
 This document describes the scripts in this repository.
 
+For more information about Bitburner and its scripting API, see the official documentation and source code:
+
+*   [Bitburner Source Code](https://github.com/bitburner-official/bitburner-src)
+
 ## end.js
 
 This script recursively traverses the network of connected servers, killing all running scripts on each server. It starts from the "home" server and explores all connected servers, ensuring that all scripts are terminated.
