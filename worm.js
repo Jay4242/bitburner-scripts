@@ -54,9 +54,14 @@ export async function main(ns) {
   // Recursive infection function
   async function spreadInfection() {
     const scannedServers = ns.scan(currentHost);
+    let foundOtherServer = false;
 
     for (const target of scannedServers) {
-      if (target === "home" || failedTargets.has(target) || infected.has(target)) continue;
+      if (target === "home") continue;
+      if (target !== currentHost) {
+        foundOtherServer = true;
+      }
+      if (failedTargets.has(target) || infected.has(target)) continue;
 
       if (await infect(target)) {
         // If infection was successful, recursively spread from the new host
@@ -66,21 +71,29 @@ export async function main(ns) {
         }
       }
     }
+    return foundOtherServer;
   }
 
   // Initial spread
-  await spreadInfection();
+  const foundServers = await spreadInfection();
 
   // Post-infection operations: weaken, grow, hack
   while (true) {
-    for (const target of infected) {
-      if (target === currentHost) continue; // Don't target the current host
+    let targets = [...infected];
+    if (!foundServers && infected.size === 1 && infected.has(currentHost)) {
+      // If no other servers are found, target the current host
+      targets = [currentHost];
+    } else {
+      targets = targets.filter(target => target !== currentHost); // Don't target the current host if other servers exist
+    }
 
+    for (const target of targets) {
       if (!ns.hasRootAccess(target)) {
         failedTargets.add(target);
         continue;
       }
 
+      // Perform weaken, grow, hack loop
       while (ns.getServerSecurityLevel(target) > ns.getServerMinSecurityLevel(target)) {
         await ns.weaken(target);
       }
@@ -89,15 +102,7 @@ export async function main(ns) {
         await ns.grow(target);
       }
 
-      // If hack.js doesn't exist on the target, copy it
-      if (!ns.fileExists("hack.js", target)) {
-        await ns.scp("hack.js", target, currentHost);
-      }
-
-      // Execute hack.js on the target
-      if (!ns.isRunning("hack.js", target)) {
-        ns.exec("hack.js", target);
-      }
+      await ns.hack(target);
     }
     await ns.sleep(1000); // Add a 1-second delay
   }
