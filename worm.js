@@ -110,6 +110,12 @@ export async function main(ns) {
         continue;
       }
 
+      // Skip servers with $0 max money
+      if (ns.getServerMaxMoney(target) === 0) {
+        ns.print(`Skipping ${target} because it has $0 max money.`);
+        continue;
+      }
+
       // Perform weaken, grow, hack loop
       while (ns.getServerSecurityLevel(target) > ns.getServerMinSecurityLevel(target)) {
         await ns.weaken(target);
@@ -120,6 +126,20 @@ export async function main(ns) {
       }
 
       await ns.hack(target);
+    }
+
+    // If there are no valid targets, target the current host
+    if (targets.every(target => ns.getServerMaxMoney(target) === 0 || !ns.hasRootAccess(target))) {
+      const currentHostTarget = ns.getHostname();
+      while (ns.getServerSecurityLevel(currentHostTarget) > ns.getServerMinSecurityLevel(currentHostTarget)) {
+        await ns.weaken(currentHostTarget);
+      }
+
+      while (ns.getServerMoneyAvailable(currentHostTarget) < ns.getServerMaxMoney(currentHostTarget)) {
+        await ns.grow(currentHostTarget);
+      }
+
+      await ns.hack(currentHostTarget);
     }
     await ns.sleep(1000); // Add a 1-second delay
   }
