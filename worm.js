@@ -23,15 +23,6 @@ export async function main(ns) {
     if (infected.has(target)) return true; // Skip if already infected
     if (tooDifficultTargets.has(target)) return false; // Skip if too difficult to hack
 
-    const requiredHackingLevel = ns.getServerRequiredHackingLevel(target);
-    const playerHackingLevel = ns.getHackingLevel();
-
-    if (playerHackingLevel < requiredHackingLevel) {
-      ns.tprint(`Skipping ${target} because required hacking level is ${requiredHackingLevel}, but player's hacking level is ${playerHackingLevel}.`);
-      tooDifficultTargets.add(target);
-      return false;
-    }
-
     ns.print(`Attempting to infect ${target}`);
 
     // Check if we have root access, if not, try to gain it
