@@ -4,6 +4,7 @@ export async function main(ns) {
   const currentHost = ns.getHostname();
   const failedTargets = new Set(); // Keep track of targets we failed to get root on
   const infected = new Set([currentHost]); // Keep track of already infected servers, starting with current
+  const hackScript = "hack.js";
 
   // Function to attempt gaining root access
   async function gainRootAccess(target) {
@@ -29,6 +30,33 @@ export async function main(ns) {
         failedTargets.add(target); // Add to failed targets
         return false; // Indicate failure
       }
+    }
+
+    // Special case for 'n00dles'
+    if (target === "n00dles") {
+      await ns.scp(hackScript, target, currentHost);
+      ns.print(`Successfully copied ${hackScript} to ${target}`);
+
+      if (!ns.isRunning(hackScript, target, target)) {
+        const scriptRam = ns.getScriptRam(hackScript, target);
+        const availableRam = ns.getServerMaxRam(target) - ns.getServerUsedRam(target);
+        let threads = Math.floor(availableRam / scriptRam);
+
+        // Ensure threads is at least 1
+        if (threads < 1) {
+          threads = 1;
+        }
+        const pid = ns.exec(hackScript, target, threads, target); // Execute with target as argument
+        if (pid === 0) {
+          ns.tprint(`Failed to execute ${hackScript} on ${target}`);
+          return false; // Indicate failure
+        }
+        ns.print(`Successfully executed ${hackScript} on ${target} with ${threads} threads and PID ${pid}`);
+      } else {
+        ns.print(`${hackScript} is already running on ${target}`);
+      }
+      infected.add(target); // Add to infected list
+      return true;
     }
 
     // Copy the script to the target server
@@ -64,47 +92,30 @@ export async function main(ns) {
   }
 
   // Recursive infection function
-  async function spreadInfection() {
-    const scannedServers = ns.scan(currentHost);
-    let foundOtherServer = false;
+  async function spreadInfection(startHost) {
+    const scannedServers = ns.scan(startHost);
 
     for (const target of scannedServers) {
       if (target === "home") continue;
-      if (target !== currentHost) {
-        foundOtherServer = true;
-      }
       if (failedTargets.has(target) || infected.has(target)) continue;
 
       if (await infect(target)) {
         // If infection was successful, recursively spread from the new host
-        // Moved calculation right before execution
-        const scriptRam = ns.getScriptRam(scriptName, target);
-        const availableRam = ns.getServerMaxRam(target) - ns.getServerUsedRam(target);
-        let threads = Math.floor(availableRam / scriptRam);
-         // Ensure threads is at least 1
-        if (threads < 1) {
-          threads = 1;
-        }
-        const pid = ns.exec(scriptName, target, threads, target); // Start worm on new host
-        if (pid === 0) {
-          ns.tprint(`Failed to execute ${scriptName} on ${target}`);
-        }
+        await spreadInfection(target);
       }
     }
-    return foundOtherServer;
   }
 
   // Initial spread
-  const foundServers = await spreadInfection();
+  await spreadInfection(currentHost);
 
   // Post-infection operations: weaken, grow, hack
   while (true) {
     let targets = [...infected];
-    if (!foundServers && infected.size === 1 && infected.has(currentHost)) {
-      // If no other servers are found, target the current host
+    
+    targets = targets.filter(target => target !== currentHost); // Don't target the current host if other servers exist
+    if (targets.length === 0) {
       targets = [currentHost];
-    } else {
-      targets = targets.filter(target => target !== currentHost); // Don't target the current host if other servers exist
     }
 
     for (const target of targets) {
