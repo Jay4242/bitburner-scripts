@@ -5,6 +5,7 @@ export async function main(ns) {
   const failedTargets = new Set(); // Keep track of targets we failed to get root on
   const infected = new Set([currentHost]); // Keep track of already infected servers, starting with current
   const hackScript = "hack.js";
+  const tooDifficultTargets = new Set(); // Keep track of targets that are too difficult to hack
 
   // Function to attempt gaining root access
   async function gainRootAccess(target) {
@@ -20,6 +21,16 @@ export async function main(ns) {
   // Function to infect a target server
   async function infect(target) {
     if (infected.has(target)) return true; // Skip if already infected
+    if (tooDifficultTargets.has(target)) return false; // Skip if too difficult to hack
+
+    const requiredHackingLevel = ns.getServerRequiredHackingLevel(target);
+    const playerHackingLevel = ns.getHackingLevel();
+
+    if (playerHackingLevel < requiredHackingLevel) {
+      ns.tprint(`Skipping ${target} because required hacking level is ${requiredHackingLevel}, but player's hacking level is ${playerHackingLevel}.`);
+      tooDifficultTargets.add(target);
+      return false;
+    }
 
     ns.print(`Attempting to infect ${target}`);
 
@@ -97,7 +108,7 @@ export async function main(ns) {
 
     for (const target of scannedServers) {
       if (target === "home") continue;
-      if (failedTargets.has(target) || infected.has(target)) continue;
+      if (failedTargets.has(target) || infected.has(target) || tooDifficultTargets.has(target)) continue;
 
       if (await infect(target)) {
         // If infection was successful, recursively spread from the new host
@@ -113,7 +124,7 @@ export async function main(ns) {
   while (true) {
     let targets = [...infected];
     
-    targets = targets.filter(target => target !== currentHost); // Don't target the current host if other servers exist
+    targets = targets.filter(target => target !== currentHost && !tooDifficultTargets.has(target)); // Don't target the current host if other servers exist
     if (targets.length === 0) {
       targets = [currentHost];
     }
